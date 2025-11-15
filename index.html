@@ -3,11 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KML Sector Beam/Radius Exporter</title>
+    <title>KML Sector Design Exporter</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="script.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Global Reset & Font --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+        .shadow-xl {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- Custom Scrollbar for Checkboxes --- */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* --- Checkbox Containers (Pop-ups) --- */
+        .checkbox-container {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            background-color: #ffffff;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            cursor: pointer;
+            transition: background-color 0.1s;
+            border-radius: 0.125rem;
+        }
+        .checkbox-item:hover {
+            background-color: #f5f3ff;
+        }
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+            height: 1rem;
+            width: 1rem;
+            border-radius: 0.125rem;
+            border-color: #94a3b8;
+            color: #4f46e5;
+        }
+
+        /* --- Value/Color Mapping Inputs (Beam/Radius/Color) --- */
+        .value-input-container, .color-input-container {
+            display: flex;
+            align-items: center;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            background-color: #ffffff;
+            justify-content: space-between;
+            transition: border-color 0.15s;
+        }
+        .value-input-container:hover, .color-input-container:hover { border-color: #a5b4fc; }
+        .value-input-container label, .color-input-container label {
+            flex-grow: 1;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        .value-input-container input[type="text"] {
+             width: 70px;
+             padding: 3px 6px;
+             border: 1px solid #e5e7eb;
+             border-radius: 0.375rem;
+             text-align: right;
+             font-size: 0.875rem;
+             color: #1f2937;
+             transition: border-color 0.15s;
+        }
+        .value-input-container input[type="text"]:focus {
+            border-color: #4f46e5;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+        }
+        .color-input-container input[type="color"] {
+            width: 30px;
+            height: 30px;
+            padding: 1px;
+            border-radius: 0.25rem;
+            border: 1px solid #d1d5db;
+        }
+
+        /* --- Dropdown Mapping Selects --- */
+        .column-select {
+            width: 100%;
+            padding: 6px;
+            border: none;
+            background-color: transparent;
+            font-weight: 500;
+            color: #1f2937;
+        }
+        .select-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background-color: white;
+            transition: all 0.2s ease-in-out;
+            padding: 4px;
+        }
+        .select-wrapper:hover:not(.disabled) { border-color: #4f46e5; }
+        .kml-label {
+            font-weight: 600;
+            color: #4b5563;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+            margin-right: 0.5rem;
+            border-right: 1px solid #e5e7eb;
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+
+        /* Styles applied by JS when a value is selected - Indigo focus */
+        .select-wrapper.dropdown-selected {
+            background-color: #f5f3ff;
+            border-color: #4f46e5;
+        }
+        .select-wrapper.dropdown-selected .kml-label {
+             color: #3730a3;
+             border-right-color: #a5b4fc;
+        }
+        .select-wrapper.dropdown-selected .column-select {
+            color: #4338ca;
+        }
+
+        /* Disabled styles */
+        .column-select:disabled { background-color: #f9fafb; cursor: not-allowed; color: #9ca3af; }
+        .select-wrapper.disabled { background-color: #f9fafb; cursor: not-allowed; border-color: #e5e7eb; }
+
+        /* Style for the Select All buttons */
+        .select-all-btn {
+            background-color: #4b5563;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 0.375rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transition: background-color 0.15s;
+        }
+        .select-all-btn:hover { background-color: #374151; }
+
+        /* FIX: Upload button styling to remove gap and ensure full coverage */
+        #fileWrapper {
+            display: flex;
+            overflow: hidden;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+        }
+
+        #fileText {
+            flex-grow: 1;
+            border: none;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        #uploadDiv {
+            width: 120px;
+            flex-shrink: 0;
+            border-radius: 0;
+            text-align: center;
+        }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
 
@@ -15,88 +187,52 @@
         <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl p-6 lg:p-10">
             <h1 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">📡 KML Sector Beam/Radius Exporter</h1>
 
-            <section id="guide-import" class="mb-8 space-y-4">
-                <h2 class="text-xl font-semibold text-gray-800">Select Raw Data File (CSV/Text)</h2>
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <input type="file" id="fileInput" accept=".csv, .txt" class="block w-full text-sm text-gray-500 
-                        file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:border-gray-300 
-                        file:bg-white file:text-indigo-600 hover:file:bg-gray-100 transition duration-150 ease-in-out">
-                    
-                    <button id="importButton" class="w-full sm:w-40 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out" disabled>
-                        Import Data
-                    </button>
+            <form class="w-full">
+                <div id="fileWrapper" class="relative w-full h-[50px] cursor-pointer">
+                    <div id="fileText" class="bg-white text-gray-500 text-base px-4 h-full leading-[50px] z-20 font-light overflow-hidden flex items-center">
+                        Select your file!
+                    </div>
+                    <div id="uploadDiv" class="h-full px-5 leading-[50px] uppercase font-bold text-white text-sm z-30 bg-gradient-to-r from-[#4f46e5] to-[#818cf8] transition-all hover:opacity-90 flex items-center justify-center">
+                        Upload
+                    </div>
+                    <input id="data-file" type="file" accept=".csv,.txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50">
                 </div>
-            </section>
+            </form>
 
             <hr class="my-6 border-gray-200">
 
-            <section id="controlsContainer" class="space-y-6"> 
+            <section id="controlsContainer" class="space-y-6">
                 <h2 class="text-xl font-semibold text-gray-800">Column Mapping & Settings</h2>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    
-                    <div id="wrapper-SiteName" class="select-wrapper disabled">
-                        <span class="kml-label">SiteName</span>
-                        <select id="SiteName" class="column-select" disabled><option value=""></option></select>
+                    <div id="wrapper-SiteName" class="select-wrapper disabled"><span class="kml-label">SiteName</span><select id="SiteName" class="column-select" disabled><option value=""></option></select></div>
+                    <div id="wrapper-SectorName" class="select-wrapper disabled"><span class="kml-label">SectorName</span><select id="SectorName" class="column-select" disabled><option value=""></option></select></div>
+                    <div id="wrapper-Longitude" class="select-wrapper disabled"><span class="kml-label">Longitude</span><select id="Longitude" class="column-select" disabled><option value=""></option></select></div>
+                    <div id="wrapper-Latitude" class="select-wrapper disabled"><span class="kml-label">Latitude</span><select id="Latitude" class="column-select" disabled><option value=""></option></select></div>
+                    <div id="wrapper-Azimuth" class="select-wrapper disabled"><span class="kml-label">Azimuth</span><select id="Azimuth" class="column-select" disabled><option value=""></option></select></div>
+
+                    <div id="wrapper-BeamCategory" class="select-wrapper disabled"><span class="kml-label">Beam Category</span><select id="BeamCategory" class="column-select" disabled><option value=""></option></select></div>
+                    <div id="wrapper-RadiusCategory" class="select-wrapper disabled"><span class="kml-label">Radius Category</span><select id="RadiusCategory" class="column-select" disabled><option value=""></option></select></div>
+                    <div id="wrapper-SiteColor" class="select-wrapper disabled"><span class="kml-label">SiteColor</span><select id="SiteColor" class="column-select" disabled><option value=""></option></select></div>
+                    <div id="wrapper-ColorCode" class="select-wrapper disabled"><span class="kml-label">SectorColor</span><select id="ColorCode" class="column-select" disabled><option value=""></option></select></div>
+
+                    <div class="flex items-center justify-between p-3 border border-gray-300 rounded-lg bg-white shadow-none max-w-xs w-full transition-all duration-300">
+                        <label for="ColorOpacity" class="text-base font-semibold text-gray-700">Color Opacity (%)</label>
+                        <select id="ColorOpacity" class="w-20 bg-gray-50 border border-gray-300 rounded-md py-1 px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200">
+                            <option value="100">100</option>
+                            <option value="90">90</option>
+                            <option value="80">80</option>
+                            <option value="70">70</option>
+                            <option value="60">60</option>
+                            <option value="50" selected>50</option>
+                            <option value="40">40</option>
+                            <option value="30">30</option>
+                            <option value="20">20</option>
+                            <option value="10">10</option>
+                        </select>
                     </div>
-                    
-                    <div id="wrapper-SectorName" class="select-wrapper disabled">
-                        <span class="kml-label">SectorName</span>
-                        <select id="SectorName" class="column-select" disabled><option value=""></option></select>
-                    </div>
-                    
-                    <div id="wrapper-Longitude" class="select-wrapper disabled">
-                        <span class="kml-label">Longitude</span>
-                        <select id="Longitude" class="column-select" disabled><option value=""></option></select>
-                    </div>
-                    
-                    <div id="wrapper-Latitude" class="select-wrapper disabled">
-                        <span class="kml-label">Latitude</span>
-                        <select id="Latitude" class="column-select" disabled><option value=""></option></select>
-                    </div>
-                    
-                    <div id="wrapper-Azimuth" class="select-wrapper disabled">
-                        <span class="kml-label">Azimuth</span>
-                        <select id="Azimuth" class="column-select" disabled><option value=""></option></select>
-                    </div>
-                    
-                    <div id="wrapper-BeamCategory" class="select-wrapper disabled">
-                        <span class="kml-label">Beam Category</span>
-                        <select id="BeamCategory" class="column-select" disabled><option value=""></option></select>
-                    </div>
-                    
-                    <div id="wrapper-RadiusCategory" class="select-wrapper disabled">
-                        <span class="kml-label">Radius Category</span>
-                        <select id="RadiusCategory" class="column-select" disabled><option value=""></option></select>
-                    </div>
-                    
-                    <div id="wrapper-SiteColor" class="select-wrapper disabled">
-                        <span class="kml-label">SiteColor</span>
-                        <select id="SiteColor" class="column-select" disabled><option value=""></option></select>
-                    </div>
-                    
-                    <div id="wrapper-ColorCode" class="select-wrapper disabled">
-                        <span class="kml-label">SectorColor</span>
-                        <select id="ColorCode" class="column-select" disabled><option value=""></option></select>
-                    </div>
-                    
-                        <div class="flex items-center justify-between p-3 border border-gray-300 rounded-lg bg-white shadow-none max-w-xs w-full transition-all duration-300">
-                            <label for="ColorOpacity" class="text-base font-semibold text-gray-700">Color Opacity (%)</label>
-                            
-                            <select id="ColorOpacity" class="w-20 bg-gray-50 border border-gray-300 rounded-md py-1 px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200">
-                                <option value="100">100</option>
-                                <option value="90">90</option>
-                                <option value="80">80</option>
-                                <option value="70">70</option>
-                                <option value="60">60</option>
-                                <option value="50" selected>50</option>
-                                <option value="40">40</option>
-                                <option value="30">30</option>
-                                <option value="20">20</option>
-                                <option value="10">10</option>
-                            </select>
-                        </div>
                 </div>
+
                 <div id="beamValueLegendSection" class="pt-6 border-t border-gray-200">
                     <h3 class="text-md font-semibold text-gray-700 mb-3">Assign Beam Value (in °) to Categories:</h3>
                     <div id="beamValueLegendContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -111,7 +247,6 @@
                     </div>
                 </div>
 
-
                 <div id="siteColorLegendSection" class="pt-6 border-t border-gray-200">
                     <h3 class="text-md font-semibold text-gray-700 mb-3">Assign Colors to Site Categories:</h3>
                     <div id="siteColorLegendContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -125,17 +260,16 @@
                         <p id="sector_color_msg" class="text-sm text-gray-500 col-span-full">Select a **Sector Color Column** above to assign colors to unique sector values.</p>
                     </div>
                 </div>
-                
-                <hr class="my-6 border-gray-200">
-                <h2 class="text-xl font-semibold text-gray-800">Select Columns for Google Earth Pop-ups</h2>
 
+                <hr class="my-6 border-gray-200">
+
+                <h2 class="text-xl font-semibold text-gray-800">Select Columns for Google Earth Pop-ups (All Input Columns)</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200">
                     <div>
                         <div class="flex justify-between items-center mb-2">
                              <label class="text-sm font-medium text-gray-700">Select Column To Display On Site</label>
                              <button type="button" onclick="toggleAllCheckboxes('site')" id="siteToggleBtn" class="select-all-btn" disabled>Select/Unselect All</button>
                         </div>
-                        
                         <div id="siteColumnsCheckboxes" class="checkbox-container custom-scrollbar">
                              <p class="text-sm text-gray-500">Import data to see column options.</p>
                         </div>
@@ -297,5 +431,489 @@
             </div>
             </div>
     </div>
+
+    <script>
+        /* ==========================================================
+           1. UI Element Declarations & Constants
+           ========================================================== */
+        const fileInput = document.getElementById('data-file');
+        const fileText = document.getElementById('fileText');
+        const uploadDiv = document.getElementById('uploadDiv');
+        const exportButton = document.getElementById('exportButton');
+        const opacitySelect = document.getElementById('ColorOpacity');
+
+        const REQUIRED_COLUMNS = ["SiteName", "SectorName", "Longitude", "Latitude", "Azimuth"];
+        const OPTIONAL_COLUMNS = ["RadiusCategory", "BeamCategory", "SiteColor", "ColorCode"];
+        // REQUIRED_SET is used to ensure the KML description includes these basic fields
+        const REQUIRED_SET = new Set(REQUIRED_COLUMNS); 
+
+        let rawData = [];
+        let dataHeaders = [];
+
+        const siteColumnsCheckboxesContainer = document.getElementById('siteColumnsCheckboxes');
+        const sectorColumnsCheckboxesContainer = document.getElementById('sectorColumnsCheckboxes');
+        const siteToggleBtn = document.getElementById('siteToggleBtn');
+        const sectorToggleBtn = document.getElementById('sectorToggleBtn');
+
+        const beamCategorySelect = document.getElementById('BeamCategory');
+        const radiusCategorySelect = document.getElementById('RadiusCategory');
+        const siteColorSelect = document.getElementById('SiteColor');
+        const sectorColorSelect = document.getElementById('ColorCode');
+
+        const beamValueLegendContainer = document.getElementById('beamValueLegendContainer');
+        const radiusValueLegendContainer = document.getElementById('radiusValueLegendContainer');
+        const siteColorLegendContainer = document.getElementById('siteColorLegendContainer');
+        const sectorColorLegendContainer = document.getElementById('sectorColorLegendContainer');
+
+        const ALL_COLUMN_SELECTS = document.querySelectorAll('.column-select');
+        const ALL_SELECT_WRAPPERS = document.querySelectorAll('.select-wrapper');
+
+        const legendMessages = {
+            'radiusValue': document.getElementById('radius_msg'),
+            'beamValue': document.getElementById('beam_msg'),
+            'siteColor': document.getElementById('site_color_msg'),
+            'sectorColor': document.getElementById('sector_color_msg')
+        };
+
+        const colorPool = ["#4f46e5","#008000","#FF0000","#0000FF","#FFFF00","#FFA500","#800080","#00FFFF","#FFC0CB","#3CB371","#FFD700","#DDA0DD","#8B4513"];
+
+        /* ==========================================================
+           2. File Upload & Parsing Logic
+           ========================================================== */
+        uploadDiv.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if(!file){
+                fileText.textContent = "Select your file!";
+                resetUI();
+                return;
+            }
+            fileText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2 text-indigo-600"></i> Reading ${file.name}...`;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if(results.data.length === 0) {
+                        alert("Error: File is empty or invalid.");
+                        fileText.textContent = "Select your file!";
+                        resetUI();
+                        return;
+                    }
+
+                    // Filter out rows that are entirely empty
+                    rawData = results.data.filter(row => Object.values(row).some(v => v !== ''));
+                    dataHeaders = results.meta.fields.filter(h => h); // Filter out potential blank headers
+
+                    fileText.textContent = `${file.name} loaded!`;
+                    enableUI();
+                    populateDropdowns();
+                    populateCheckboxes(); 
+
+                    // Initial legend generation
+                    generateCategoryLegend('radiusValue', 'text', '120');
+                    generateCategoryLegend('beamValue', 'text', '35');
+                    generateCategoryLegend('siteColor', 'color', '#008000');
+                    generateCategoryLegend('sectorColor', 'color', '#008000');
+                },
+                error: function(error) {
+                    alert("Error parsing file: " + error.message);
+                    fileText.textContent = "Select your file!";
+                    resetUI();
+                }
+            });
+        });
+
+        /* ==========================================================
+           3. UI Utility Functions
+           ========================================================== */
+
+        function resetUI() {
+             ALL_COLUMN_SELECTS.forEach(select => {
+                select.disabled = true;
+                select.innerHTML = '<option value=""></option>';
+             });
+             ALL_SELECT_WRAPPERS.forEach(wrapper => wrapper.classList.add('disabled'));
+             exportButton.disabled = true;
+             siteToggleBtn.disabled = true;
+             sectorToggleBtn.disabled = true;
+             siteColumnsCheckboxesContainer.innerHTML = '<p class="text-sm text-gray-500">Import data to see column options.</p>';
+             sectorColumnsCheckboxesContainer.innerHTML = '<p class="text-sm text-gray-500">Import data to see column options.</p>';
+
+             // Reset legends
+             generateCategoryLegend('radiusValue', 'text', '120');
+             generateCategoryLegend('beamValue', 'text', '35');
+             generateCategoryLegend('siteColor', 'color', '#008000');
+             generateCategoryLegend('sectorColor', 'color', '#008000');
+        }
+
+        function enableUI() {
+             ALL_COLUMN_SELECTS.forEach(select => select.disabled = false);
+             ALL_SELECT_WRAPPERS.forEach(wrapper => wrapper.classList.remove('disabled'));
+             exportButton.disabled = false;
+             siteToggleBtn.disabled = false;
+             sectorToggleBtn.disabled = false;
+        }
+
+        function applySelectionStyle(selectElement) {
+            const wrapper = document.getElementById('wrapper-' + selectElement.id);
+            if (!wrapper) return;
+            selectElement.value !== "" ? wrapper.classList.add('dropdown-selected') : wrapper.classList.remove('dropdown-selected');
+        }
+
+        function populateDropdowns(){
+            const columnSelectIDs=[...REQUIRED_COLUMNS,...OPTIONAL_COLUMNS];
+            const allSelects=columnSelectIDs.map(id=>document.getElementById(id)).filter(e=>e);
+            allSelects.forEach(select=>{ select.innerHTML='<option value=""></option>'; });
+
+            dataHeaders.forEach(header=>allSelects.forEach(select=>{
+                const option=document.createElement('option');
+                option.value=header;
+                option.textContent=header;
+                select.appendChild(option);
+            }));
+
+            // Auto-match required columns
+            REQUIRED_COLUMNS.forEach(vbaName=>{
+                const headerMatch = dataHeaders.find(h=>h.toLowerCase().includes(vbaName.toLowerCase()));
+                if(headerMatch){
+                    const selectElement=document.getElementById(vbaName);
+                    if(selectElement){
+                        selectElement.value=headerMatch;
+                        applySelectionStyle(selectElement);
+                    }
+                }
+            });
+        }
+
+        function populateCheckboxes(){
+            siteColumnsCheckboxesContainer.innerHTML='';
+            sectorColumnsCheckboxesContainer.innerHTML='';
+            
+            let columnsAdded = false;
+
+            // *** FIX: Iterate through ALL headers with NO EXCLUSION ***
+            dataHeaders.forEach(header=>{
+                columnsAdded = true;
+
+                // Site Checkbox
+                let siteItem=document.createElement('label');
+                siteItem.className='checkbox-item';
+                // Check all by default
+                siteItem.innerHTML=`<input type="checkbox" value="${header}" checked class="rounded text-indigo-600 focus:ring-indigo-500"> ${header}`;
+                siteColumnsCheckboxesContainer.appendChild(siteItem);
+
+                // Sector Checkbox
+                let sectorItem=document.createElement('label');
+                sectorItem.className='checkbox-item';
+                // Check all by default
+                sectorItem.innerHTML=`<input type="checkbox" value="${header}" checked class="rounded text-indigo-600 focus:ring-indigo-500"> ${header}`;
+                sectorColumnsCheckboxesContainer.appendChild(sectorItem);
+            });
+
+            // Handle case where no headers are found (empty file or invalid parse)
+            if(!columnsAdded) {
+                 siteColumnsCheckboxesContainer.innerHTML = '<p class="text-sm text-gray-500">No columns found. Please check file format.</p>';
+                 sectorColumnsCheckboxesContainer.innerHTML = '<p class="text-sm text-gray-500">No columns found. Please check file format.</p>';
+                 siteToggleBtn.disabled = true;
+                 sectorToggleBtn.disabled = true;
+            } else {
+                 siteToggleBtn.disabled = false;
+                 sectorToggleBtn.disabled = false;
+            }
+        }
+
+        window.toggleAllCheckboxes = function(type) {
+            const container = type === 'site' ? siteColumnsCheckboxesContainer : sectorColumnsCheckboxesContainer;
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            const shouldCheckAll = Array.from(checkboxes).some(cb => !cb.checked);
+            checkboxes.forEach(cb => cb.checked = shouldCheckAll);
+        }
+
+        /* ==========================================================
+           4. Legend/Category Mapping Logic
+           ========================================================== */
+
+        function getUniqueCategories(header) {
+            const categories = new Set();
+            rawData.forEach(row => {
+                const val = row[header];
+                if (val) categories.add(val.trim());
+            });
+            return Array.from(categories).sort();
+        }
+
+        function generateCategoryLegend(type, inputType, defaultValue) {
+            let selectElement, container, msgElement;
+
+            if(type==='siteColor'){ selectElement=siteColorSelect; container=siteColorLegendContainer; msgElement=legendMessages['siteColor']; }
+            else if(type==='sectorColor'){ selectElement=sectorColorSelect; container=sectorColorLegendContainer; msgElement=legendMessages['sectorColor']; }
+            else if(type==='beamValue'){ selectElement=beamCategorySelect; container=beamValueLegendContainer; msgElement=legendMessages['beamValue']; }
+            else if(type==='radiusValue'){ selectElement=radiusCategorySelect; container=radiusValueLegendContainer; msgElement=legendMessages['radiusValue']; }
+            else return;
+
+            container.innerHTML = '';
+            const selectedHeader = selectElement.value;
+            if(!selectedHeader){ container.appendChild(msgElement); msgElement.classList.remove('hidden'); return; }
+            else msgElement.classList.add('hidden');
+
+            const categoryArray = getUniqueCategories(selectedHeader);
+            if(categoryArray.length===0){ container.innerHTML='<p class="text-sm text-red-500 col-span-full">Selected column contains no unique values to map.</p>'; return; }
+
+            categoryArray.forEach((category,index)=>{
+                const className = inputType==='color' ? 'color-input-container':'value-input-container';
+                const idSuffix = category.replace(/[^a-zA-Z0-9]/g,'_');
+                let actualDefault = defaultValue;
+
+                // Smart defaults for Beam/Color
+                if(inputType==='color'){ actualDefault = colorPool[index % colorPool.length]; }
+                else if(type==='beamValue'){
+                    actualDefault = ['60','30','33','45'].find(v=>category.includes(v))||'35';
+                }
+
+                const div=document.createElement('div');
+                div.className=className;
+                div.innerHTML=`<label for="${type}-${idSuffix}">${category}</label><input type="${inputType}" id="${type}-${idSuffix}" data-category="${category}" data-type="${type}" value="${actualDefault}">`;
+                container.appendChild(div);
+            });
+        }
+
+        function getMapping(type){
+            const map={};
+            let container;
+            if(type==='siteColor') container=siteColorLegendContainer;
+            else if(type==='sectorColor') container=sectorColorLegendContainer;
+            else if(type==='beamValue') container=beamValueLegendContainer;
+            else if(type==='radiusValue') container=radiusValueLegendContainer;
+            else return {};
+
+            container.querySelectorAll(`input[data-type="${type}"]`).forEach(input=>{
+                map[input.getAttribute('data-category')]=input.value;
+            });
+            return map;
+        }
+
+        // Add change listeners to categorical dropdowns
+        ALL_COLUMN_SELECTS.forEach(select => {
+            select.addEventListener('change', () => {
+                applySelectionStyle(select);
+                if (select.id === 'RadiusCategory') generateCategoryLegend('radiusValue', 'text', '120');
+                if (select.id === 'BeamCategory') generateCategoryLegend('beamValue', 'text', '35');
+                if (select.id === 'SiteColor') generateCategoryLegend('siteColor', 'color', '#008000');
+                if (select.id === 'ColorCode') generateCategoryLegend('sectorColor', 'color', '#008000');
+            });
+        });
+
+        /* ==========================================================
+           5. KML Generation Functions
+           ========================================================== */
+
+        function hexToKMLColor(hexColor, opacityPct){
+            const alpha=Math.round((opacityPct/100)*255).toString(16).padStart(2,'0').toUpperCase();
+            hexColor=hexColor.replace("#","");
+            if(hexColor.length!==6) return alpha+"FFFFFF"; // Fallback to white if invalid
+            // KML uses AABBGGRR format
+            return alpha+hexColor.substring(4,6)+hexColor.substring(2,4)+hexColor.substring(0,2);
+        }
+
+        function getSectorCoordinates(lon, lat, Azimuth, Radius, Beam){
+            const LAT_CONV=110540; // Meters per degree latitude
+            const LON_CONV=111320*Math.cos(lat*Math.PI/180); // Meters per degree longitude at this latitude
+
+            const RADIUS_LAT_DEG=Radius/LAT_CONV;
+            const RADIUS_LON_DEG=Radius/LON_CONV;
+
+            const ANGLE_STEP=Beam/20; // 20 steps for the arc
+            const RADIO_START=Azimuth-(Beam/2);
+
+            let coords=`${lon},${lat},0 `; // Start at the site center
+
+            for(let i=0;i<=20;i++){
+                let radioAngle=RADIO_START+i*ANGLE_STEP;
+                let angleRad=(90-radioAngle)*Math.PI/180; // Convert to mathematical angle (0=East)
+
+                let dx=RADIUS_LON_DEG*Math.cos(angleRad);
+                let dy=RADIUS_LAT_DEG*Math.sin(angleRad);
+
+                coords+=`${(lon+dx).toFixed(6)},${(lat+dy).toFixed(6)},0 `;
+            }
+
+            coords+=`${lon},${lat},0`; // Close the polygon back to the site center
+            return coords;
+        }
+
+        function getSelectedCheckboxes(type){
+            const container = type==='site'?siteColumnsCheckboxesContainer:sectorColumnsCheckboxesContainer;
+            return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb=>cb.value);
+        }
+
+        exportButton.addEventListener('click', generateAndDownloadKML);
+
+        function generateAndDownloadKML(){
+            const mappings={};
+            [...REQUIRED_COLUMNS, ...OPTIONAL_COLUMNS].forEach(id=>{ const el=document.getElementById(id); if(el)mappings[id]=el.value; });
+
+            const requiredFields=["SiteName","SectorName","Longitude","Latitude","Azimuth"];
+            if(!requiredFields.every(id=>mappings[id])){ alert("ERROR: One or more required columns not mapped."); return; }
+
+            const beamValueMap=getMapping('beamValue');
+            const radiusValueMap=getMapping('radiusValue');
+            const siteColorMap=getMapping('siteColor');
+            const sectorColorMap=getMapping('sectorColor');
+
+            const beamCategoryColumn=mappings.BeamCategory;
+            const radiusCategoryColumn=mappings.RadiusCategory;
+            const siteColorColumn=mappings.SiteColor;
+            const sectorColorColumn=mappings.ColorCode;
+
+            const opacityPct=parseFloat(opacitySelect.value);
+            const selectedSectorCols=getSelectedCheckboxes('sector');
+            const selectedSiteCols=getSelectedCheckboxes('site');
+            
+            // --- KML Generation Start ---
+            let kmlContent=`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Sector Coverage Export</name>`;
+            let siteIconsDict={}; // Used to track and plot sites only once
+
+            rawData.forEach(row=>{
+                const getValue=header=>row[header]||'';
+                const site=getValue(mappings.SiteName);
+                const sector=getValue(mappings.SectorName);
+                const lon=parseFloat(getValue(mappings.Longitude));
+                const lat=parseFloat(getValue(mappings.Latitude));
+                const Azimuth=parseFloat(getValue(mappings.Azimuth)||0);
+
+                if(isNaN(lon)||isNaN(lat)||!site||!sector) return; // Skip invalid rows
+
+                // --- Radius Calculation ---
+                let Radius=120;
+                let radiusValueSource="Default (120m)";
+                if(radiusCategoryColumn){
+                    const radiusCategory=getValue(radiusCategoryColumn).trim();
+                    const mappedRadius=radiusValueMap[radiusCategory];
+                    if(mappedRadius&&!isNaN(parseFloat(mappedRadius))){
+                        Radius=parseFloat(mappedRadius);
+                        radiusValueSource=`Category: ${radiusCategory} (${Radius}m)`;
+                    }
+                }
+                if(isNaN(Radius)||Radius<=0) Radius=120;
+
+                // --- Beam Calculation ---
+                let Beam=35;
+                let beamValueSource="Default (35°)";
+                if(beamCategoryColumn){
+                    const beamCategory=getValue(beamCategoryColumn).trim();
+                    const mappedBeam=beamValueMap[beamCategory];
+                    if(mappedBeam&&!isNaN(parseFloat(mappedBeam))){
+                        Beam=parseFloat(mappedBeam);
+                        beamValueSource=`Category: ${beamCategory} (${Beam}°)`;
+                    }
+                }
+                if(isNaN(Beam)||Beam<=0) Beam=35;
+
+                // --- Sector Color ---
+                const DEFAULT_SECTOR_COLOR="#008000";
+                let sectorKMLColor, sectorCategoryValue;
+                if(sectorColorColumn){
+                    sectorCategoryValue=getValue(sectorColorColumn).trim()||'N/A (Blank)';
+                    sectorKMLColor=hexToKMLColor(sectorColorMap[sectorCategoryValue]||DEFAULT_SECTOR_COLOR, opacityPct);
+                }
+                else {
+                    sectorCategoryValue="N/A (No Column)";
+                    sectorKMLColor=hexToKMLColor(DEFAULT_SECTOR_COLOR, opacityPct);
+                }
+
+                // --- Sector Placemark Description ---
+                // Start with automatically included info:
+                let sectorDescText=`<![CDATA[<font style="font-size:8pt;font-family:Arial;"><b>Sector Information</b><br>`;
+                sectorDescText+=`Site=${site}<br>Sector=${sector}<br>Longitude=${lon}<br>Latitude=${lat}<br>Azimuth=${Azimuth}<br>`;
+                sectorDescText+=`Beam=${Beam}° (${beamValueSource})<br>Radius=${Radius}m (${radiusValueSource})<br>Sector Color Category=${sectorCategoryValue}<br>`;
+                
+                // Add all columns selected in the checkbox list
+                selectedSectorCols.forEach(header=>{
+                    sectorDescText+=`${header}=${getValue(header)||'N/A'}<br>`;
+                });
+                sectorDescText+='</font>]]>';
+
+                const coords=getSectorCoordinates(lon,lat,Azimuth,Radius,Beam);
+
+                kmlContent+=`<Placemark><name>${sector}</name><description>${sectorDescText}</description><Style><LineStyle><color>${sectorKMLColor}</color><width>1.5</width></LineStyle><PolyStyle><color>${sectorKMLColor}</color></PolyStyle></Style><Polygon><outerBoundaryIs><LinearRing><coordinates>${coords}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>`;
+
+                // --- Site Placemark (Only plot once per site) ---
+                if(!siteIconsDict[site]){
+                    siteIconsDict[site]=true;
+                    const DEFAULT_SITE_COLOR="#008000";
+                    let siteKMLColor, siteCategoryValue;
+
+                    if(siteColorColumn){
+                        siteCategoryValue=getValue(siteColorColumn).trim()||'N/A';
+                        siteKMLColor=hexToKMLColor(siteColorMap[siteCategoryValue]||DEFAULT_SITE_COLOR,100);
+                    }
+                    else{
+                        siteCategoryValue="N/A";
+                        siteKMLColor=hexToKMLColor(DEFAULT_SITE_COLOR,100);
+                    }
+
+                    const styleID=`siteStyle_${siteKMLColor.substring(2)}`;
+                    kmlContent+=`<Style id="${styleID}"><IconStyle><color>${siteKMLColor}</color><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/pal2/icon18.png</href></Icon></IconStyle></Style>`; // Using a default Google Earth icon
+
+                    // Start with automatically included info:
+                    let siteDescText=`<![CDATA[<font style="font-size:8pt;font-family:Arial;"><b>Site Information</b><br>`;
+                    siteDescText+=`Site=${site}<br>Longitude=${lon}<br>Latitude=${lat}<br>Site Color Category=${siteCategoryValue}<br>`;
+                    
+                    // Add all columns selected in the checkbox list
+                    selectedSiteCols.forEach(header=>{
+                         siteDescText+=`${header}=${getValue(header)||'N/A'}<br>`;
+                    });
+                    siteDescText+='</font>]]>';
+
+                    kmlContent+=`<Placemark><name>${site}</name><description>${siteDescText}</description><styleUrl>#${styleID}</styleUrl><Point><coordinates>${lon},${lat},0</coordinates></Point></Placemark>`;
+                }
+            });
+
+            kmlContent+=`</Document></kml>`;
+
+            const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sector_category_export.kml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /* ==========================================================
+           6. Guide Modal Logic
+           ========================================================== */
+        const openGuideBtn = document.getElementById('open-guide');
+        const guidePanel = document.getElementById('guide-panel');
+        const closeGuideBtn = document.getElementById('close-guide');
+
+        openGuideBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            guidePanel.classList.remove('hidden');
+        });
+
+        closeGuideBtn.addEventListener('click', () => {
+            guidePanel.classList.add('hidden');
+        });
+
+        guidePanel.addEventListener('click', (e) => {
+            if(e.target === guidePanel) {
+                guidePanel.classList.add('hidden');
+            }
+        });
+
+        /* ==========================================================
+           7. Initial Setup on Page Load
+           ========================================================== */
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial setup to display default messages/styles
+            resetUI();
+            opacitySelect.value = "50";
+        });
+    </script>
 </body>
 </html>
