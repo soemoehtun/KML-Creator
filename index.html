@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KML Sector Beam/Radius Exporter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="script.js" defer></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+    <main class="flex-grow p-4 sm:p-8">
+        <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl p-6 lg:p-10">
+            <h1 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">📡 KML Sector Beam/Radius Exporter</h1>
+
+            <section id="guide-import" class="mb-8 space-y-4">
+                <h2 class="text-xl font-semibold text-gray-800">Select Raw Data File (CSV/Text)</h2>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <input type="file" id="fileInput" accept=".csv, .txt" class="block w-full text-sm text-gray-500 
+                        file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:border-gray-300 
+                        file:bg-white file:text-indigo-600 hover:file:bg-gray-100 transition duration-150 ease-in-out">
+                    
+                    <button id="importButton" class="w-full sm:w-40 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out" disabled>
+                        Import Data
+                    </button>
+                </div>
+            </section>
+
+            <hr class="my-6 border-gray-200">
+
+            <section id="controlsContainer" class="space-y-6"> 
+                <h2 class="text-xl font-semibold text-gray-800">Column Mapping & Settings</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    
+                    <div id="wrapper-SiteName" class="select-wrapper disabled">
+                        <span class="kml-label">SiteName</span>
+                        <select id="SiteName" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                    <div id="wrapper-SectorName" class="select-wrapper disabled">
+                        <span class="kml-label">SectorName</span>
+                        <select id="SectorName" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                    <div id="wrapper-Longitude" class="select-wrapper disabled">
+                        <span class="kml-label">Longitude</span>
+                        <select id="Longitude" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                    <div id="wrapper-Latitude" class="select-wrapper disabled">
+                        <span class="kml-label">Latitude</span>
+                        <select id="Latitude" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                    <div id="wrapper-Azimuth" class="select-wrapper disabled">
+                        <span class="kml-label">Azimuth</span>
+                        <select id="Azimuth" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                    <div id="wrapper-BeamCategory" class="select-wrapper disabled">
+                        <span class="kml-label">Beam Category</span>
+                        <select id="BeamCategory" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                    <div id="wrapper-RadiusCategory" class="select-wrapper disabled">
+                        <span class="kml-label">Radius Category</span>
+                        <select id="RadiusCategory" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                    <div id="wrapper-SiteColor" class="select-wrapper disabled">
+                        <span class="kml-label">SiteColor</span>
+                        <select id="SiteColor" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                    <div id="wrapper-ColorCode" class="select-wrapper disabled">
+                        <span class="kml-label">SectorColor</span>
+                        <select id="ColorCode" class="column-select" disabled><option value=""></option></select>
+                    </div>
+                    
+                        <div class="flex items-center justify-between p-3 border border-gray-300 rounded-lg bg-white shadow-none max-w-xs w-full transition-all duration-300">
+                            <label for="ColorOpacity" class="text-base font-semibold text-gray-700">Color Opacity (%)</label>
+                            
+                            <select id="ColorOpacity" class="w-20 bg-gray-50 border border-gray-300 rounded-md py-1 px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200">
+                                <option value="100">100</option>
+                                <option value="90">90</option>
+                                <option value="80">80</option>
+                                <option value="70">70</option>
+                                <option value="60">60</option>
+                                <option value="50" selected>50</option>
+                                <option value="40">40</option>
+                                <option value="30">30</option>
+                                <option value="20">20</option>
+                                <option value="10">10</option>
+                            </select>
+                        </div>
+                </div>
+                <div id="beamValueLegendSection" class="pt-6 border-t border-gray-200">
+                    <h3 class="text-md font-semibold text-gray-700 mb-3">Assign Beam Value (in °) to Categories:</h3>
+                    <div id="beamValueLegendContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <p id="beam_msg" class="text-sm text-gray-500 col-span-full">Select a **Beam Category** column above to assign specific degrees to unique values.</p>
+                    </div>
+                </div>
+
+                <div id="radiusValueLegendSection" class="pt-6 border-t border-gray-200">
+                    <h3 class="text-md font-semibold text-gray-700 mb-3">Assign Radius Value (in meters) to Categories:</h3>
+                    <div id="radiusValueLegendContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <p id="radius_msg" class="text-sm text-gray-500 col-span-full">Select a **Radius Category** column above to assign specific meters to unique values.</p>
+                    </div>
+                </div>
+
+
+                <div id="siteColorLegendSection" class="pt-6 border-t border-gray-200">
+                    <h3 class="text-md font-semibold text-gray-700 mb-3">Assign Colors to Site Categories:</h3>
+                    <div id="siteColorLegendContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                         <p id="site_color_msg" class="text-sm text-gray-500 col-span-full">Select a **Site Icon Color Column** above to assign colors to unique site values.</p>
+                    </div>
+                </div>
+
+                <div id="sectorColorLegendSection" class="pt-6 border-t border-gray-200">
+                    <h3 class="text-md font-semibold text-gray-700 mb-3">Assign Colors to Sector Categories:</h3>
+                    <div id="sectorColorLegendContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <p id="sector_color_msg" class="text-sm text-gray-500 col-span-full">Select a **Sector Color Column** above to assign colors to unique sector values.</p>
+                    </div>
+                </div>
+                
+                <hr class="my-6 border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-800">Select Columns for Google Earth Pop-ups</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                             <label class="text-sm font-medium text-gray-700">Select Column To Display On Site</label>
+                             <button type="button" onclick="toggleAllCheckboxes('site')" id="siteToggleBtn" class="select-all-btn" disabled>Select/Unselect All</button>
+                        </div>
+                        
+                        <div id="siteColumnsCheckboxes" class="checkbox-container custom-scrollbar">
+                             <p class="text-sm text-gray-500">Import data to see column options.</p>
+                        </div>
+                    </div>
+                    <div>
+                           <div class="flex justify-between items-center mb-2">
+                             <label class="text-sm font-medium text-gray-700">Select Column To Display On Sector</label>
+                             <button type="button" onclick="toggleAllCheckboxes('sector')" id="sectorToggleBtn" class="select-all-btn" disabled>Select/Unselect All</button>
+                         </div>
+                        <div id="sectorColumnsCheckboxes" class="checkbox-container custom-scrollbar">
+                            <p class="text-sm text-gray-500">Import data to see column options.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-6 border-gray-200">
+
+                <button id="exportButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg text-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out" disabled>
+                    Export KML File
+                </button>
+            </section>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white text-center p-4 mt-8">
+        <section id="developer-info" class="text-sm text-gray-400">
+            <a href="https://shorturl.at/iO1Ib" target="_blank" class="hover:text-indigo-300 transition duration-150">Developed By - Soe Moe Tun</a>
+            <span class="mx-2">|</span>
+            <a href="#" id="open-guide" class="hover:text-indigo-300">Tools Guide Line</a>
+        </section>
+    </footer>
+
+    <div id="guide-panel" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden overflow-auto">
+        <div class="bg-white max-w-4xl mx-auto my-10 p-8 rounded-xl shadow-xl relative">
+            <button id="close-guide" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 font-bold text-xl">&times;</button>
+
+            <h2 class="text-3xl font-bold mb-4">User Guide</h2>
+
+            <div class="space-y-6 text-gray-700 leading-relaxed">
+                <section>
+                    <h3 class="text-xl font-semibold">Overview</h3>
+                    <p>This guide explains how to use the <strong>KML Sector Beam/Radius Exporter Tool</strong> to generate sector coverage polygons and site markers for Google Earth using CSV/TXT data.</p>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">1️⃣ Purpose of the Tool</h3>
+                    <ul class="list-disc ml-6 mt-2">
+                        <li>Visualize sector beam coverage using polygons</li>
+                        <li>Export accurate KML files for Google Earth</li>
+                        <li>Apply color coding based on categories</li>
+                        <li>Customize beamwidth & radius values</li>
+                        <li>Display additional information on site/sector pop-ups</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">2️⃣ Input File Requirements</h3>
+                    <p class="mt-2">
+                        Upload your data in <strong>.csv</strong> or <strong>.txt</strong> format with a header row.
+                    </p>
+
+                    <h4 class="font-semibold mt-3">✔ Required Columns</h4>
+                    <ul class="list-disc ml-6">
+                        <li>SiteName</li>
+                        <li>SectorName</li>
+                        <li>Longitude</li>
+                        <li>Latitude</li>
+                        <li>Azimuth</li>
+                    </ul>
+
+                    <h4 class="font-semibold mt-3">⭕ Optional Columns</h4>
+                    <ul class="list-disc ml-6">
+                        <li>BeamCategory</li>
+                        <li>RadiusCategory</li>
+                        <li>SiteColor</li>
+                        <li>SectorColor / ColorCode</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">3️⃣ Step 1 — Import File</h3>
+                    <p class="mt-2">To load your dataset:</p>
+                    <ul class="list-disc ml-6">
+                        <li>Select your CSV/TXT file</li>
+                        <li>Click <strong>Import Data</strong></li>
+                    </ul>
+                    <p class="mt-3">The tool will automatically enable mapping options.</p>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">4️⃣ Step 2 — Column Mapping</h3>
+                    <p class="mt-2">Map the required and optional fields to your dataset columns.</p>
+                    <p class="mt-3">Proper mapping ensures correct polygon geometry and pop-up information.</p>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">5️⃣ Step 3 — Beam Value Assignment</h3>
+                    <p class="mt-2">
+                        If a beam category column is selected, you can assign beamwidth (°)
+                        for each category.
+                    </p>
+                    <p class="mt-2 font-medium">Default beamwidth: 35°</p>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">6️⃣ Step 4 — Radius Value Assignment</h3>
+                    <p class="mt-2">
+                        If radius categories exist, you can assign radii in meters for each category.
+                    </p>
+                    <p class="mt-2 font-medium">Default radius: 120m</p>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">7️⃣ Step 5 — Color Mapping</h3>
+                    <p class="mt-2">Assign colors to:</p>
+                    <ul class="list-disc ml-6">
+                        <li>Site categories (icon colors)</li>
+                        <li>Sector categories (polygon color)</li>
+                    </ul>
+                    <p class="mt-2">Opacity is also adjustable (10–100%).</p>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">8️⃣ Step 6 — Select Pop-up Columns</h3>
+                    <p class="mt-2">
+                        Choose which fields appear when you click a site or sector in Google Earth.
+                    </p>
+                    <p class="mt-2">Use “Select/Unselect All” for fast selection.</p>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">9️⃣ Step 7 — Export KML</h3>
+                    <p class="mt-2">
+                        When everything is mapped, click <strong>Export KML File</strong> to download
+                        <code>sector_category_export.kml</code>.
+                    </p>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">🔟 Default Values Used</h3>
+                    <ul class="list-disc ml-6 mt-3">
+                        <li>Beamwidth → 35°</li>
+                        <li>Radius → 120m</li>
+                        <li>Sector Color → Green (#008000)</li>
+                        <li>Site Color → Green (#008000)</li>
+                        <li>Opacity → 100% for site icons</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-xl font-semibold">1️⃣1️⃣ Troubleshooting</h3>
+                    <ul class="list-disc ml-6 mt-3">
+                        <li><strong>Import button disabled</strong> → No file selected</li>
+                        <li><strong>No polygons in KML</strong> → Wrong Lat/Lon mapping</li>
+                        <li><strong>Missing colors</strong> → Category not mapped</li>
+                        <li><strong>Wrong radius/beam</strong> → Invalid numeric input</li>
+                    </ul>
+                </section>
+            </div>
+            </div>
+    </div>
+</body>
+</html>
